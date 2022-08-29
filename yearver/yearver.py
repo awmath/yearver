@@ -1,10 +1,10 @@
 """Main module."""
 #!/bin/python3
-from datetime import datetime
+from datetime import date
 import sys
 import re
 
-VERSION_REGEX = '^[0-9]{4}\.[0-9]+(?:-[a-z]+\.[0-9]+)?$'
+VERSION_REGEX = "^[0-9]{4}\\.[0-9]+(?:-[a-z]+\\.[0-9]+)?$"
 
 class Version:
     """
@@ -13,17 +13,58 @@ class Version:
 
     year: int = None
     iteration: int = None
-    pr_name: str = None
-    pr_iteration: str = None
+    channel: str = None
+    channel_iteration: str = None
 
-    def __init__(self, year, iteration, pr_name, pr_iteration):
+    def __init__(self, year, iteration, channel=None, channel_iteration=None):
         self.year = year
         self.iteration = iteration
-        self.pr_name = pr_name
-        self.pr_iteration = pr_iteration
+        self.channel = channel
+        self.channel_iteration = channel_iteration
+
     
+    def bump(self, release, channel=None):
+        assert release.is_prerelease is False, "The last release version can't be a prerelease"
+        
+        # if we have a new year we start with iteration 1
+        year_now = date.today().year
+
+        # handle year changes
+        if channel is None:
+            if release.year != year_now:
+                # if the year has changed start a new cycle
+                return Version(year=year_now, iteration=1)
+        else:
+            if self.year != year_now:
+                # if the year has changed start a new cycle
+                return Version(year=year_now, iteration=1, channel=channel, channel_iteration=1)
+        
+        # from now on we don't have to deal with year changes
+        new_version = Version(year=self.year)
+
+        # no prerelease -> bump to next version
+        if channel is None:
+            return Version(year=year_now, iteration=release.iteration + 1)
+
+        # prerelease
+        # if release iteration changed start a new channel cycle
+        next_iteration = release.iteration + 1
+        if self.iteration != next_iteration:
+            return Version(year=year_now, iteration=next_iteration, channel=channel, channel_iteration=1)
+
+        # if release channel changed start a new cycle
+        if self.channel != channel:
+            return Version(year=year_now, iteration=next_iteration, channel=channel, channel_iteration=1)
+
+        if self.channel == channel:
+            return Version(year=year_now, iteration=next_iteration, channel=channel, channel_iteration=self.channel_iteration + 1)
+            
+
+        raise RuntimeError('No release version could be created.')
+
+
     @classmethod
-    def from_string(version_string):
+    def from_string(cls, version_string):
         """
         create Version instance from given string representation
 
@@ -33,20 +74,14 @@ class Version:
         Returns:
             Version: instance with parsed version string
         """
-        return Version(*self.parse_version(version))
-
-    def __eq__(self, other): 
-        if not isinstance(other, MyClass):
-            # don't attempt to compare against unrelated types
-            return NotImplemented
-
-        return self.year == other.year and self.iteration == other.iteration and self.pr_name == other.pr_name and self.pr_iteration == other.pr_iteration
+        return cls(*cls.parse(version_string))
+    
 
     def __str__(self):
-        if self.pr_name is None:
+        if self.channel is None:
             return '{}.{}'.format(self.year, self.iteration)
 
-        return '{}.{}-{}.{}'.format(self.year, self.iteration, self.pr_name, self.pr_iteration)
+        return '{}.{}-{}.{}'.format(self.year, self.iteration, self.channel, self.channel_iteration)
 
 
     @staticmethod
@@ -71,56 +106,18 @@ class Version:
             _type_: _description_
         """
         # try to split main and prelease
-        pr_name = None
-        pr_iteration = None
-        try:
-            main, prelease = version_string.split('-')
-            pr_name, pr_iteration = prelease.split('.')
-
-        except ValueError:
-            return int(year), int(iteration)
-
+        channel = None
+        channel_iteration = None
+        parts = version_string.split('-')
+        main = parts[0]
         year, iteration = main.split('.')
+        try:
+            channel, channel_iteration = parts[1].split('.')
+        except IndexError:
+            return int(year), int(iteration), None, None
 
-        return int(year), int(iteration), pr_name, int(pr_iteration)
+        return int(year), int(iteration), channel, int(channel_iteration)
 
     @property
     def is_prerelease(self):
-        return self.pr_name is not None
-    
-
-
-def bump(release: Version, current: Version):
-    assert release.is_prerelease() is False, "The last release version can't be a prerelease"
-
-    # if the last release was no prelease bump
-    if release == current:
-        current.iteration += 1
-        return current
-    
-    new_version = Version()
-
-    current_year = datetime.now().year
-    version_year, iteration = main.split('.')
-
-    # if we have a new year we start with iteration 1
-    if current_year != version_year:
-        new_main = f'{current_year}.1'
-
-    # request release but last is prerelease
-    # keep last intended version
-    elif channel is None and prelease is not None:
-        new_main = main
-    
-    # last release was a pr and request is also a pr
-    elif channel is not None and prelease is not None:
-
-    # same channel as last pr is requested
-    elif channel == pr_name:
-
-    
-        
-
-    
-
-
+        return self.channel is not None
