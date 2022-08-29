@@ -1,0 +1,4 @@
+image: docker pull gitpod/workspace-python-3.10:2022-08-28-20-55-56
+
+tasks:
+  - init: pip install -r requirements_dev.txt

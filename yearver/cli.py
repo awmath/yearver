@@ -1,17 +1,21 @@
 """Console script for yearver."""
 import argparse
 import sys
-
+from yearver import Version, bump
 
 def main():
     """Console script for yearver."""
     parser = argparse.ArgumentParser()
-    parser.add_argument('_', nargs='*')
+    parser.add_argument('last_release', type='str')
+    parser.add_argument('current_version', type='str')
+    parser.add_argument('-v', '--verbose', action='store_true', help='Enable verbose output')
     args = parser.parse_args()
 
-    print("Arguments: " + str(args._))
-    print("Replace this message by putting your code into "
-          "yearver.cli.main")
+    release = Version(args.last_release)
+    current = Version(args.current_version)
+
+    print(str(bump(release, current)))
+
     return 0
 
 
